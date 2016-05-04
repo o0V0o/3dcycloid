@@ -63,184 +63,76 @@ shader.materialProperties = {1,1,0.2,10}
 shader.materialColor = {1,1,1}
 shader.attenuation = {0.9, 0.8}
 
-ptShader.pointSize = 1
+ptShader.pointSize = 5
 ptShader.color = {1,1,1}
+
 
 local transform = Matrix.identity(4)
 local z, dz = -2, 0.15
 local x, dx = 0, 0.1
 local y, dy = 0,0.05
-local function testPointCloud()
-	local pts = require("pointcloud")()
-	local function rand()
-		return (math.random()*2)-1
-	end
-	print("generating points")
-	for i=1,1 do
-		local pt = vec3( rand(), rand(), rand() )
-		pt:normalize()
-		pt:scale(math.random()+1)
-		pts:add( pt )
-	end
-
-	return pts
-end
-local ptCloud = testPointCloud()
-local ptCloudTest = testPointCloud()
-local ptCloudRand = testPointCloud()
-local sphereTransform = Transformation():scale(1/k)
-
-local function epicycloid(theta, phi,k)
-	local rTheta = Quaternion.axisAngle(vec3(0,1,0), theta)
-	local rGenTheta = Quaternion.axisAngle(vec3(0,1,0), theta*k)
-
-	local rThetaMat4 = rTheta:matrix()
-
-	local rPhiAxis = rThetaMat4.mult( vec4(1,0,0,0), rThetaMat4).xyz
-	local rPhi = Quaternion.axisAngle(rPhiAxis, phi)
-	local rGenPhi = Quaternion.axisAngle(rPhiAxis, phi*k)
-
-	local origin = rTheta:matrix() * rPhi:matrix()
-	origin = origin.mult( vec4(0,0,1+1/k, 0), origin)
-	origin = origin.xyz
-
-	local v = rGenTheta:matrix() * rGenPhi:matrix()
-	v = v.mult( vec4(0,0,1/k,0), v)
-	v=v.xyz
-
-	sphereTransform.position = origin
-	sphereTransform.dirty = true
-
-	return origin + v
-end
-local function hypocycloid(theta, phi,k)
-	local rTheta = Quaternion.axisAngle(vec3(0,1,0), theta)
-	local rGenTheta = Quaternion.axisAngle(vec3(0,1,0), -theta*k)
-
-	local rThetaMat4 = rTheta:matrix()
-
-	local rPhiAxis = rThetaMat4.mult( vec4(1,0,0,0), rThetaMat4).xyz
-	local rPhi = Quaternion.axisAngle(rPhiAxis, phi)
-	local rGenPhi = Quaternion.axisAngle(rPhiAxis, -phi*k)
-
-	local origin = rTheta:matrix() * rPhi:matrix()
-	origin = origin.mult( vec4(0,0,1+1/k, 0), origin)
-	origin = origin.xyz
-
-	local v = rGenTheta:matrix() * rGenPhi:matrix()
-	v = v.mult( vec4(0,0,1/k,0), v)
-	v=v.xyz
-
-	sphereTransform.position = origin
-	sphereTransform.dirty = true
-
-	return origin + v
-end
-
-local Hypocycloid = class()
-function Hypocycloid:__init(k)
-	self.k = k
-end
-function Hypocycloid:rotate(axis, angle)
-	local k = self.k
-	if self.rotation and self.genRotation then
-		self.rotation = self.rotation * Quaternion.axisAngle( axis, angle)
-		self.genRotation = self.genRotation * Quaternion.axisAngle(axis, angle*k)
-	else
-		self.rotation = Quaternion.axisAngle(axis, angle)
-		self.genRotation = Quaternion.axisAngle(axis, angle*k)
-	end
-end
-function Hypocycloid:point()
-	local k = self.k
-	local origin = self.rotation:matrix()
-	origin = origin.mult( vec4(0,0,1+1/k,0), origin ).xyz
-	local v = self.genRotation:matrix()
-	v = v.mult(vec4(0,0,1/k,0), v).xyz
-	return origin+v
-end
-function Hypocycloid:reset()
-	self.rotation = nil
-	self.genRotation = nil
-end
-
-local Epicycloid = class()
-
-local function testfunc(theta,phi)
-	local transform = Quaternion.axisAngle(vec3(0,1,0), theta):matrix()
-	local result = transform.mult( vec4(0,0,1.5,0), transform)
-	result =  vec3(result.usrdata[0], result.usrdata[1], result.usrdata[2])
-	return result, transform
-end
-
 local theta, dtheta, ntheta = 0, 0.1, 300
 local phi, dphi, nphi = 0, 0.002, 100
-local cycloid = Hypocycloid(k)
 
 math.randomseed( platform.time() )
 
---[[
-for i=1,20 do
-for i=1,ntheta do
-	cycloid:rotate(vec3(0,1,0), 2*math.pi/ntheta)
-	ptCloud:add( cycloid:point() )
-end
-	cycloid:rotate( vec3(1,0,0), 0.1 )
-end
---]]
+local ptCloud = require('pointcloud')()
+local ptCloudRand = require('pointcloud')()
+
+local cycloid = require("cycloid")(5)
 
 local function rand()
 	return (math.random()*2)-1
 end
---[[
-for i=1,ntheta * 10 do
-	cycloid:reset()
-	cycloid:rotate(vec3(rand(),rand(),rand()):normalize(), math.random()*math.pi*2)
-	ptCloudRand:add( cycloid:point() )
-end
---]]
-
-for i=1,10 do
-	local axis = vec3(rand(), rand(), 0):normalize()
-	for j = 1,ntheta do
-		cycloid:rotate(axis, math.pi*2/ntheta)
-		ptCloudRand:add( cycloid:point() )
-	end
-	cycloid:reset()
-end
-
 local axis = vec3(rand(), rand(), rand()):normalize()
-local function render()
-	gl.viewport(0,0,gl.canvas.width, gl.canvas.height)
-	countFrames()
-	gl.glClear(gl.GL_COLOR_BUFFER_BIT + gl.GL_DEPTH_BUFFER_BIT)
-	cycloid:rotate(axis, dtheta)
-	ptCloud:add( cycloid:point() )
 
---[[
-	//if theta < math.pi/4 then
-		for i=1,ntheta do
-			phi = phi + math.pi/nphi
-			cycloid:rotate(vec3(0,1,0), dtheta)
-			--ptCloud:add( hypocycloid(theta,phi,5) )
-			ptCloud:add( cycloid:point() )
-		end
-		theta = theta + math.pi/ntheta
-	//end
---]]
+gl.viewport(0,0,gl.canvas.width, gl.canvas.height)
+
+local ptCloudRand = require('pointcloud')()
+local lobeGen = require('lobegen')
+local ptGen
+
+
+local N, dn = 3*math.pi/4, 0.1
+N=1.24
+N=math.pi*70.53/180
+--N=math.pi * 0.1
+--N=math.pi*3/4
+--N=3/4
+require('eventhandler')("next", "click", function()
+	print("click")
+	ptGen = coroutine.create( lobeGen )
+	ptCloudRand = require("pointcloud")()
+	print("N=",N, N/math.pi)
+	while coroutine.status(ptGen)~="dead" do
+		assert(	coroutine.resume(ptGen,3, ptCloudRand, N))
+	end
+	N=N+dn
+end)
+
+rawset(_G, "white", ptCloud)
+rawset(_G, "red", ptCloudRand)
+rawset(_G, "Quaternion", Quaternion)
+rawset(_G, "vec3", vec3)
+
+local function render()
+	--countFrames()
+
+	gl.glClear(gl.GL_COLOR_BUFFER_BIT + gl.GL_DEPTH_BUFFER_BIT)
+	--cycloid:rotate(axis, dtheta)
+	--ptCloud:add( cycloid:point() )
 
 
 
 	shader:use()
 	shader.view = camera.view * trackball:transform()
 	shader.perspective = camera.perspective
-
-
+	--draw the pitch sphere
 	shader.model = Matrix.identity(4)
 	pitchSphere:draw(shader)
-
-	shader.model = sphereTransform:matrix()
-	generatingSphere:draw(shader)
+	--draw the generating sphere
+	--shader.model = sphereTransform:matrix()
+	--generatingSphere:draw(shader)
 
 	ptShader:use()
 	ptShader.view = camera.view * trackball:transform()
