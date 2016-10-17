@@ -40,7 +40,8 @@ function F.LinearSpline:integrate(t)
 			local dx = (point.x-lastPoint.x)
 			local dy = (point.y-lastPoint.y)
 			if t>= point.x then
-				sum = sum + 0.5*dx*dy + lastPoint.y*dx
+				--sum = sum + 0.5*dx*dy + lastPoint.y*dx
+				sum = sum + 0.5*(lastPoint.y + point.y)*dx
 			elseif t>lastPoint.x then
 				local x = t-lastPoint.x
 				local slope, intercept = dy/dx, lastPoint.y
@@ -48,6 +49,9 @@ function F.LinearSpline:integrate(t)
 			end
 		end
 		lastPoint = point
+	end
+	if t>lastPoint.x then
+		sum = sum + lastPoint.y*(t-lastPoint.x)
 	end
 	return sum
 end

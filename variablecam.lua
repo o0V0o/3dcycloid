@@ -36,11 +36,6 @@ function Cam:rotate(a)
 	local planetTheta = self.planetSpeed:integrate( self.theta )
 	local carrierTheta = self.carrierSpeed:integrate( self.theta )
 	local camTheta = self.camSpeed:integrate( self.theta )
-	if (planetTheta-math.pi/2)%(2*math.pi) > math.pi then
-		self.returnPhase = true
-	else
-		--self.returnPhase = false
-	end
 	self.planetRot = Quaternion.axisAngle( self.up, planetTheta)
 	self.carrierRot = Quaternion.axisAngle( self.up, carrierTheta)
 	self.camRot = Quaternion.axisAngle( self.up, camTheta)
@@ -51,7 +46,10 @@ function Cam:points()
 	local carrier = self.carrierRot * self.carrier
 	local planet = self.carrierRot*self.planetRot*self.planet
 	planet = self.planetRot * self.planet
-	if self.returnPhase then
+
+	--due to the periodic function, the cam points swap places when we have a
+	--ratio of 0.5 (other adjustments needed for other ratios)
+	if((self.theta/math.pi)%4)>=2 then
 		return {self.camRotInv*(carrier+planet), self.camRotInv*(carrier-planet)}
 	else
 		return {self.camRotInv*(carrier-planet), self.camRotInv*(carrier+planet)}
