@@ -1,0 +1,3 @@
+[submodule "drawlib"]
+	path = drawlib
+	url = https://github.com/o0v0o/tripping-happiness
