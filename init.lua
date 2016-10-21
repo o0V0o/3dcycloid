@@ -1,6 +1,6 @@
 print("starting")
 -- need to add the path to our drawing library
-package.path = "/drawlib/?.lua;?.lua"
+package.path = "drawlib/?.lua;?.lua"
 
 -- and add a way to *load* said library.
 require("httploader")
