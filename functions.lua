@@ -8,7 +8,10 @@ function F.Periodic:__init(func, period)
 	self.period = period
 end
 function F.Periodic:integrate(t)
-	return self.func:integrate( t%self.period )
+	return self.func:integrate( t%self.period ) + (self.func:integrate(self.period)*math.floor(t/self.period))
+end
+function F.Periodic:get(x)
+	return self.func:get(x%self.period)
 end
 
 F.Constant = class()
@@ -17,6 +20,9 @@ function F.Constant:__init(c)
 end
 function F.Constant:integrate(t)
 	return self.c*t
+end
+function F.Constant:get(x)
+	return c
 end
 
 F.Linear = class()
@@ -27,10 +33,24 @@ end
 function F.Linear:integrate(t)
 	return 0.5*self.slope*t*t  + self.intercept*t
 end
+function F.Linear:get(x)
+	return self.slope*x + self.intercept
+end
 
 F.LinearSpline = class()
 function F.LinearSpline:__init(points)
 	self.points = points
+end
+function F.LinearSpline:get(x)
+	local lastPoint
+	for i,point in ipairs(self.points) do
+		if lastPoint and lastPoint.x <= x and x <= point.x then
+			local t = (x-lastPoint.x)/(point.x-lastPoint.x)
+			return lastPoint.y*(1-t) + point.y*(t)
+		end
+		lastPoint = point
+	end
+	return 0
 end
 function F.LinearSpline:integrate(t)
 	local lastPoint
